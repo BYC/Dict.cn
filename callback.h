@@ -13,4 +13,7 @@ gint input_complete2(GtkWidget *widget, GdkEvent *event, gpointer data);   //输
 
 //entry内容自动全选函数
 gint entry_reinput(GtkWidget *widget, GdkEvent *event, gpointer data );
+
+//列表条目选择回调
+void list_item_selected(GtkWidget *widget, gpointer data);
 #endif // CALLBACK_H_INCLUDED

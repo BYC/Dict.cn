@@ -10,10 +10,10 @@ gboolean is_text_valid(const char *text, gchar **tmp)       //判断是否是有
     start = 0;
     end = 0;
     len = 0;
-    while(isspace(*(text + start)) && (text + start != NULL))
+    while(!isalpha(*(text + start)) && (*(text + start) != '\000'))
         start++;
     end+=start;
-    while(isalpha(*(text + end)) && (text + end != NULL))
+    while(isalpha(*(text + end)) && (*(text + end) != '\000'))
         end++;
     if(!(len = end - start))
         return FALSE;
@@ -109,4 +109,20 @@ gint entry_reinput( GtkWidget *widget,
 {
     gtk_widget_grab_focus(widget);
     return FALSE;
+}
+
+void list_item_selected(GtkWidget *widget, gpointer data){
+    GtkTreeView *list;
+    GtkTreeModel *liststore;
+    GtkTreeIter iter;
+    gchar *str;
+
+    list = gtk_tree_selection_get_tree_view(GTK_TREE_SELECTION(widget));
+    liststore = gtk_tree_view_get_model(list);
+    gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &liststore, &iter);
+
+    gtk_tree_model_get(liststore, &iter, LIST_ITEM, &str, -1);
+    gtk_entry_set_text(GTK_ENTRY(data), str);
+    gtk_tree_iter_free(&iter);
+    g_free(str);
 }

@@ -7,6 +7,7 @@ GtkWidget *paned;
 GtkWidget *scrolled_window;
 GtkWidget *vbox, *hbox;
 GtkWidget *list;
+GtkTreeSelection *selection;
 GtkWidget *entry, *search_button;
 GtkWidget *notebook, *text_view;
 static butn_data butndata1; //创建查询结构体
@@ -41,7 +42,7 @@ void add_to_list(GtkWidget *list, const gchar *str)
     gint row_count = 1;
     store = GTK_LIST_STORE(gtk_tree_view_get_model
                            (GTK_TREE_VIEW(list)));
-
+    gtk_buttons
     gtk_list_store_insert(store, &iter, 0);
     gtk_list_store_set(store, &iter, LIST_ITEM, str, -1);
 
@@ -84,9 +85,11 @@ GtkWidget *generate_main_window()
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(input_complete2), list);
     g_signal_connect(G_OBJECT(entry), "enter-notify-event", G_CALLBACK(entry_reinput), NULL);
 
-//  Search Button
-    butndata1.entry = entry; //组装查询结构体
+//组装查询结构体、设置列表选择回调
+    butndata1.entry = entry;
     butndata1.list = list;
+
+//  Search Button
     search_button = gtk_button_new_with_label("Search");
     g_signal_connect(G_OBJECT(search_button), "button-release-event",
                      G_CALLBACK(input_complete1), &butndata1);
