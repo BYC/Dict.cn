@@ -42,6 +42,10 @@
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="pack_s.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="pack_s.h" />
 		<Unit filename="parser.c">
 			<Option compilerVar="CC" />
 		</Unit>

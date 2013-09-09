@@ -42,7 +42,7 @@ void add_to_list(GtkWidget *list, const gchar *str)
     gint row_count = 1;
     store = GTK_LIST_STORE(gtk_tree_view_get_model
                            (GTK_TREE_VIEW(list)));
-    gtk_buttons
+
     gtk_list_store_insert(store, &iter, 0);
     gtk_list_store_set(store, &iter, LIST_ITEM, str, -1);
 

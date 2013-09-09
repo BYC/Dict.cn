@@ -1,21 +1,26 @@
 #include <ctype.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include "parser.h"
 
-int pstrspn(char *str1, char *str2)                                             //返回制定字符串needle在
-{                                                                               //标签haystack中的位置
-    int len = 0;
+void offset_reset(struct tag_offset *offset)
+{
+    offset->o_start = offset->o_end = offset->c_start = offset->c_end
+    = offset->cn_len = offset->al_len = 0;
+}
+
+size_t pstrcspn(char *str1, char *str2)                                         //返回制定字符串str2
+{                                                                               //在标签str1中的位置
+    size_t len = 0;
     char *tmp;
 
-    len = strcspn(str1, ">");
-    tmp = (char *)malloc(len);
-    strncpy(tmp, str1, len);
+    while(*(str1 + len) != '>')
+    {
+        len++;
+    }
+    tmp = (char *)malloc(len + 2);
+    strncpy(tmp, str1, len + 1);
+    tmp[len + 1] = '\0';
     len = 0;
     while(*(tmp + len))
     {
@@ -30,28 +35,13 @@ int pstrspn(char *str1, char *str2)                                             
     return 0;
 }
 
-char *pstrcat(char **dest, char *src)
-{
-    size_t len;
-    len = (*dest ? strlen(*dest) : 0) + strlen(src) + 1;
-    char *text = (char *)malloc(len);
-    memset(text, 0, len);
-    if(*dest)
-        strcat(text, *dest);
-    strcat(text, src);
-    free(*dest);
-    free(src);
-    *dest = text;
-    return text;
-}
-
 int is_target_tag(char *str, const char *tag,                                   //实现标签的判断、标签栈元素
                   const char *opt, const char *val,                             //组装的功能;是目标标签返回1
                   off_t *len)                                                   //并设置offset的值是关闭标
 {                                                                               //返回0,并设置offset相应值
 
     off_t slen;
-    *len = strcspn(str, ">");
+    *len = pstrcspn(str, ">");
     if(*(str + 1) == '/')
     {
         return 0;
@@ -62,7 +52,7 @@ int is_target_tag(char *str, const char *tag,                                   
         if(opt == NULL)
             return 1;
 
-        if((slen = pstrspn(str, (char *)opt)))
+        if((slen = pstrcspn(str, (char *)opt)))
         {
             str = str + slen + strlen(opt) + 2;                                 //<div    class="abc">
             if((strncmp(str, val, strlen(val)) == 0))                           //   ^_____^____^^
@@ -97,7 +87,7 @@ int opt_cmp(char *str, const char *opt)
 
 int is_no_close_tag(char *str)                                                  //排除不进行匹配的TAG
 {
-    if(strncmp(str, "<br>", 4) == 0)
+    if(strncmp(str, "<br", 3) == 0)
     {
         return 1;
     }
@@ -157,6 +147,8 @@ int get_tag_offset(char *hstr, size_t len,
     off_t iner_off = 0;
     struct tag_elem *stack = NULL;
 
+    offset_reset(offset);
+
     while(i < len)
     {
         if(*hstr == '<')
@@ -185,10 +177,8 @@ int get_tag_offset(char *hstr, size_t len,
                     {
                         offset->c_start = i;
                         offset->c_end = i + iner_off;
-                        offset->t_len = offset->c_end - offset->o_start + 1;
-                        offset->o_len = offset->o_end - offset->o_start + 1;
-                        offset->c_len = offset->c_end - offset->c_start + 1;
                         offset->cn_len = offset->c_start - offset->o_end - 1;
+                        offset->al_len = offset->c_end - offset->o_start + 1;
                         free(stack);
                         return 1;
                     }
@@ -211,138 +201,4 @@ int get_tag_offset(char *hstr, size_t len,
         i++;                                                                    //移动字符指针，增加计数器的值
     }
     return 0;
-}
-
-char *get_text_in_tag(char *str, struct tag_offset offset)
-{
-    size_t off;
-    char *text;
-    off = offset.o_end + 1;
-    text = (char *)malloc(offset.cn_len + 1);
-    memset(text, 0, offset.cn_len + 1);
-    str += off;
-    strncpy(text, str, offset.cn_len);
-    text[offset.cn_len] = '\0';
-    return text;
-}
-
-char *get_text_btwn(char *str, off_t start, off_t end)
-{
-    size_t len;
-    char *text;
-    len = end - start - 1;
-    text = (char *)malloc(len + 1);
-    memset(text, 0, len + 1);
-    str += (start + 1);
-    strncpy(text, str, len);
-    text[len]  = '\0';
-    return text;
-}
-
-char *get_a_string(const char *str)
-{
-    size_t len = strlen(str) + 1;
-    char *text = malloc(len);
-    memset(text, 0, len);
-    strncpy(text, str, len - 1);
-    text[len - 1] = '\0';
-    return text;
-}
-
-void go_pack_keyword(char *str, size_t len, struct word_struct *word)
-{
-    char *tmp;
-    size_t size;
-    struct tag_offset offset1, offset2, offset3;
-    memset(word, 0, sizeof(struct word_struct));
-
-    if(get_tag_offset(str, len, "h1", "class", "keyword", &offset1))
-    {
-        pstrcat(&word->keyword, get_text_in_tag(str, offset1));
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end + 1);
-    }
-
-    if(get_tag_offset(str, len, "div", "class", "phonetic", &offset1))
-    {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
-        get_tag_offset(tmp, size, "span", NULL, NULL, &offset2);
-        get_tag_offset(tmp, size, "bdo", NULL, NULL, &offset3);
-        pstrcat(&word->phonetic, get_text_btwn(tmp, offset2.o_end, offset3.o_start));
-        pstrcat(&word->phonetic, get_text_in_tag(tmp, offset3));
-        pstrcat(&word->phonetic, get_a_string(" "));
-
-        tmp += (offset2.c_end + 1);
-        size -= (offset2.c_end - 1);
-        get_tag_offset(tmp, size, "span", NULL, NULL, &offset2);
-        get_tag_offset(tmp, size, "bdo", NULL, NULL, &offset3);
-        pstrcat(&word->phonetic, get_text_btwn(tmp, offset2.o_end, offset3.o_start));
-        pstrcat(&word->phonetic, get_text_in_tag(tmp, offset3));
-
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end - 1);
-    }
-
-    if(get_tag_offset(str, len, "div", "class", "shape", &offset1))
-    {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
-        while(get_tag_offset(tmp, size, "span", NULL, NULL, &offset2))
-        {
-            get_tag_offset(tmp, size, "label", NULL, NULL, &offset3);
-            pstrcat(&word->shapes, get_text_in_tag(tmp, offset3));
-            get_tag_offset(tmp, size, "a", NULL, NULL, &offset3);
-            pstrcat(&word->shapes, get_text_in_tag(tmp, offset3));
-            pstrcat(&word->shapes, get_a_string(" "));
-
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
-        }
-    }
-}
-
-int pack_word_struct(char *str, ssize_t str_len, struct word_struct *word)
-{
-    size_t size;
-    struct tag_offset offset1= {0, 0, 0, 0};
-    if(get_tag_offset(str, str_len, "div", "class", "main", &offset1))
-    {
-        str += (offset1.o_end + 1);
-        size = offset1.cn_len;
-    }
-
-
-    if(get_tag_offset(str, size, "div", "class", "word", &offset1))
-    {
-        go_pack_keyword(str + offset1.o_end + 1, offset1.cn_len, word);
-        str += (offset1.c_end + 1);
-        size -= (offset1.c_end + 1);
-    }
-
-//    if(get_tag_offset(str, size, "div", "class", "section def", &offset1))
-//    {
-//        go_pack_secdef(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
-//    }
-//    if(get_tag_offset(str, size, "div", "class", "section sent", &offset1))
-//    {
-//        go_pack_secsent(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
-//    }
-//    if(get_tag_offset(str, size, "div", "class", "section learn", &offset1))
-//    {
-//        go_pack_seclrn(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
-//    }
-//    if(get_tag_offset(str, size, "div", "class", "section ask", &offset1))
-//    {
-//        go_pack_secask(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
-//    }
-    return 1;
 }
