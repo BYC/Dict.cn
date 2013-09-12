@@ -2470,22 +2470,23 @@
 
 1376015607 /home/byc/Workspace/dict_cn/callback.h
 
-1378096466 source:/home/byc/Workspace/dict_cn/parser.c
+1378827249 source:/home/byc/Workspace/dict_cn/parser.c
 	<ctype.h>
 	<string.h>
 	<stdlib.h>
 	"parser.h"
 
-1378096633 /home/byc/Workspace/dict_cn/parser.h
+1379000528 /home/byc/Workspace/dict_cn/parser.h
 	<sys/types.h>
 
-1378096660 source:/home/byc/Workspace/dict_cn/pack_s.c
+1379000604 source:/home/byc/Workspace/dict_cn/pack_s.c
 	<stddef.h>
 	<string.h>
 	<stdlib.h>
+	<ctype.h>
 	"pack_s.h"
 	"parser.h"
 
-1378096702 /home/byc/Workspace/dict_cn/pack_s.h
+1379000556 /home/byc/Workspace/dict_cn/pack_s.h
 	"parser.h"
 

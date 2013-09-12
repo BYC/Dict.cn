@@ -14,39 +14,39 @@ struct str_item
 
 struct word_def
 {
-    struct str_item *basi;                                                   //基本释义
-    struct str_item *dual;                                                   //双语释义
-    struct str_item *dtil;                                                   //详尽释义
-    struct str_item *en;                                                     //英英释义
+    struct str_item *basi;                                                      //基本释义
+    struct str_item *dual;                                                      //双语释义
+    struct str_item *dtil;                                                      //详尽释义
+    struct str_item *en;                                                        //英英释义
 };
 
 struct word_snt
 {
-    struct str_item *sort;                                                   //例句
-    struct str_item *patt;                                                   //常见句型
-    struct str_item *phra;                                                   //常用短语
-    struct str_item *coll;                                                   //词汇搭配
-    struct str_item *auth;                                                   //经典引文
+    struct str_item *sort;                                                      //例句
+    struct str_item *patt;                                                      //常见句型
+    struct str_item *phra;                                                      //常用短语
+    struct str_item *coll;                                                      //词汇搭配
+    struct str_item *auth;                                                      //经典引文
 };
 
 struct word_lrn
 {
-    struct str_item *ess;                                                    //词语用法
-    struct str_item *disc;                                                   //词义辨析
-    struct str_item *comn;                                                   //常见错误
-    struct str_item *etm;                                                    //词源解说
+    struct str_item *ess;                                                       //词语用法
+    struct str_item *disc;                                                      //词义辨析
+    struct str_item *comn;                                                      //常见错误
+    struct str_item *etm;                                                       //词源解说
 };
 
 struct word_ask
 {
-    struct str_item *content;                                                //提问补充
+    struct str_item *content;                                                   //提问补充
 };
 
 struct word_rel
 {
-    struct str_item *nfw;                                                    //近反义词
-    struct str_item *baike;                                                  //互动百科
-    struct str_item *ndw;                                                    //临近单词
+    struct str_item *nfw;                                                       //近反义词
+    struct str_item *baike;                                                     //互动百科
+    struct str_item *ndw;                                                       //临近单词
 };
 
 struct word_struct
@@ -71,16 +71,6 @@ struct word_struct
 };
 
 char *pstrcat(char **dest, char *src);
-
-char *get_text_in_tag(char *str, struct tag_offset offset);
-
-char *get_text_btwn(char *str, off_t start, off_t end);
-
-char *get_text_in_oneline(char *str, size_t len, char *sepr);
-
-char *get_a_string(const char *str);
-
-void go_pack_keyword(char *str, size_t len, struct word_struct *word);
 
 int pack_word_struct(char *str, ssize_t str_len, struct word_struct *word);
 

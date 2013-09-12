@@ -3,14 +3,22 @@
 #include <stdlib.h>
 #include "parser.h"
 
-void offset_reset(struct tag_offset *offset)
+void offset_reset(struct tag_offset *offset, int n)
 {
-    offset->o_start = offset->o_end = offset->c_start = offset->c_end
-    = offset->cn_len = offset->al_len = 0;
+    int i = 0;
+    struct tag_offset *offset_tmp;
+    for(i = 0; i < n; i++)
+    {
+        offset_tmp = offset + i;
+        offset_tmp->o_start = offset_tmp->o_end = offset_tmp->c_start
+                              = offset_tmp->c_end = offset_tmp->cn_len
+                                      = offset_tmp->al_len = 0;
+    }
 }
 
 size_t pstrcspn(char *str1, char *str2)                                         //返回制定字符串str2
-{                                                                               //在标签str1中的位置
+{
+    //在标签str1中的位置
     size_t len = 0;
     char *tmp;
 
@@ -38,7 +46,8 @@ size_t pstrcspn(char *str1, char *str2)                                         
 int is_target_tag(char *str, const char *tag,                                   //实现标签的判断、标签栈元素
                   const char *opt, const char *val,                             //组装的功能;是目标标签返回1
                   off_t *len)                                                   //并设置offset的值是关闭标
-{                                                                               //返回0,并设置offset相应值
+{
+    //返回0,并设置offset相应值
 
     off_t slen;
     *len = pstrcspn(str, ">");
@@ -147,7 +156,7 @@ int get_tag_offset(char *hstr, size_t len,
     off_t iner_off = 0;
     struct tag_elem *stack = NULL;
 
-    offset_reset(offset);
+    offset_reset(offset, 1);
 
     while(i < len)
     {

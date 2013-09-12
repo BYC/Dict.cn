@@ -6,6 +6,18 @@
 #include "pack_s.h"
 #include "parser.h"
 
+char *get_a_string(const char *str)
+{
+    if(str == NULL)
+        return NULL;
+    size_t len = strlen(str) + 1;
+    char *text = malloc(len);
+    memset(text, 0, len);
+    strncpy(text, str, len - 1);
+    text[len - 1] = '\0';
+    return text;
+}
+
 char *pstrcat(char **dest, char *src)
 {
     if(src == NULL)
@@ -83,37 +95,26 @@ FindOff2:
                 return text;
         }
 
-        if(strncmp(str + off2, "<br", 3) == 0)
-            pstrcat(&text, get_a_string("\n"));
         if(off2 < off1)
         {
             off2++;
             goto FindOff2;
         }
         pstrcat(&text, get_text_btwn(str, off1, off2));
-        if(strlen(text) != 0)
+        if(strncmp(str + off2, "<br", 3) == 0)
+            pstrcat(&text, get_a_string("\n"));
+        if(text != NULL)
         {
-            pstrcat(&text, get_a_string(sepr));
+            if(strlen(text) != 0)
+                pstrcat(&text, get_a_string(sepr));
         }
         off1++;
+        off2++;
     }
-}
-
-char *get_a_string(const char *str)
-{
-    if(str == NULL)
-        return NULL;
-    size_t len = strlen(str) + 1;
-    char *text = malloc(len);
-    memset(text, 0, len);
-    strncpy(text, str, len - 1);
-    text[len - 1] = '\0';
-    return text;
 }
 
 void creat_string_item(struct str_item **node)
 {
-
     *node = (struct str_item *)malloc(sizeof(struct str_item));
     memset(*node, 0, sizeof(struct str_item));
 }
@@ -122,255 +123,592 @@ void go_pack_keyword(char *str, size_t len, struct word_struct *word)
 {
     char *tmp;
     size_t size;
-    struct tag_offset offset1, offset2, offset3;
+    struct tag_offset offset[3];
 
-    offset_reset(&offset1);
-    offset_reset(&offset2);
-    offset_reset(&offset3);
+    offset_reset(offset, 3);
     memset(word, 0, sizeof(struct word_struct));
 
-    if(get_tag_offset(str, len, "h1", "class", "keyword", &offset1))
+    if(get_tag_offset(str, len, "h1", "class", "keyword", &offset[0]))
     {
-        pstrcat(&word->keyword, get_text_in_tag(str, offset1));
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end + 1);
+        pstrcat(&word->keyword, get_text_in_tag(str, offset[0]));
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
     }
 
-    if(get_tag_offset(str, len, "div", "class", "phonetic", &offset1))
+    if(get_tag_offset(str, len, "span", "class", "level-title", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
-        get_tag_offset(tmp, size, "span", NULL, NULL, &offset2);
-        get_tag_offset(tmp, size, "bdo", NULL, NULL, &offset3);
-        pstrcat(&word->phonetic,
-                get_text_btwn(tmp, offset2.o_end, offset3.o_start));
-        pstrcat(&word->phonetic, get_text_in_tag(tmp, offset3));
-        pstrcat(&word->phonetic, get_a_string(" "));
-
-        tmp += (offset2.c_end + 1);
-        size -= (offset2.c_end - 1);
-        get_tag_offset(tmp, size, "span", NULL, NULL, &offset2);
-        get_tag_offset(tmp, size, "bdo", NULL, NULL, &offset3);
-        pstrcat(&word->phonetic,
-                get_text_btwn(tmp, offset2.o_end, offset3.o_start));
-        pstrcat(&word->phonetic, get_text_in_tag(tmp, offset3));
-
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end - 1);
+        pstrcat(&word->word_level, get_text_in_tag(str, offset[0]));
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
     }
 
-    if(get_tag_offset(str, len, "div", "class", "shape", &offset1))
+    if(get_tag_offset(str, len, "div", "class", "phonetic", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
-        while(get_tag_offset(tmp, size, "span", NULL, NULL, &offset2))
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        while(get_tag_offset(tmp, size, "span", NULL, NULL, &offset[1]))
         {
-            get_tag_offset(tmp, size, "label", NULL, NULL, &offset3);
-            pstrcat(&word->shapes, get_text_in_tag(tmp, offset3));
-            get_tag_offset(tmp, size, "a", NULL, NULL, &offset3);
-            pstrcat(&word->shapes, get_text_in_tag(tmp, offset3));
+            pstrcat(&word->phonetic,
+                    get_text_in_oneline(tmp + offset[1].o_start,
+                                        offset[1].al_len, " "));
+            pstrcat(&word->phonetic, get_a_string(" "));
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end - 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    if(get_tag_offset(str, len, "div", "class", "shape", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        while(get_tag_offset(tmp, size, "span", NULL, NULL, &offset[1]))
+        {
+            get_tag_offset(tmp, size, "label", NULL, NULL, &offset[2]);
+            pstrcat(&word->shapes, get_text_in_tag(tmp, offset[2]));
+            get_tag_offset(tmp, size, "a", NULL, NULL, &offset[2]);
+            pstrcat(&word->shapes, get_text_in_tag(tmp, offset[2]));
             pstrcat(&word->shapes, get_a_string(" "));
 
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
         }
     }
 }
 
+/*==================================组装释义====================================*/
 void go_pack_secdef(char *str, size_t len, struct word_struct *word)
 {
     char *tmp, *tmp1, *str_cat;
     size_t size, size1;
     struct str_item **node_now;
-    struct tag_offset offset1, offset2, offset3, offset4;
+    struct tag_offset offset[4];
 
-    offset_reset(&offset1);
-    offset_reset(&offset2);
-    offset_reset(&offset3);
-    offset_reset(&offset4);
+    offset_reset(offset, 4);
     word->def = (struct word_def *)malloc(sizeof(struct word_def));
     memset(word->def, 0, sizeof(struct word_def));
 
-    if(get_tag_offset(str, len, "ul", "class", "dict-basic-ul", &offset1))
+    /*=================================基本释义=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout basic clearfix", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;                                          //移动指针到基本释义区块
-        size = offset1.cn_len;                                                  //设定该区块的局部长度
+        tmp = str + offset[0].o_end + 1;                                        //移动指针到基本释义区块
+        size = offset[0].cn_len;                                                //设定该区块的局部长度
         node_now = &word->def->basi;                                            //node_now指向基本释义链表头
-        while(get_tag_offset(tmp, size, "li", NULL, NULL, &offset2))            //获取li 并用offset2记下li位置
+        while(get_tag_offset(tmp, size, "li", NULL, NULL, &offset[1]))          //获取li 并用offset[2]记下li位置
         {
             creat_string_item(node_now);
-//            get_tag_offset(tmp + offset2.o_end + 1, offset2.cn_len, "span",     //offset1记下span位置
-//                           NULL, NULL, &offset3);
             pstrcat(&((*node_now)->cntnt),
-                    get_text_in_oneline(tmp + offset2.o_start,
-                                        offset2.al_len, NULL));
-//            get_tag_offset(tmp + offset2.o_end + 1,
-//                           offset2.cn_len, "strong", NULL, NULL, &offset3);
-//            pstrcat(&((*node_now)->cntnt),
-//                    get_text_in_tag(tmp + offset2.o_end + 1, offset3));
+                    get_text_in_oneline(tmp + offset[1].o_start,
+                                        offset[1].al_len, NULL));
 
             node_now = &((*node_now)->next);
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
         }
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end + 1);
-        offset_reset(&offset1);
-        offset_reset(&offset2);
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 2);
     }
 
-    if(get_tag_offset(str, len, "div", "class", "layout dual", &offset1))
+    /*=================================双语释义=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout dual", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
         node_now = &word->def->dual;
 
-        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset2))
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
         {
-            tmp1 = tmp + offset2.o_end + 1;
-            size1 = offset2.cn_len;
-            get_tag_offset(tmp, size, "span", NULL, NULL, &offset3);
-            str_cat = get_text_in_oneline(tmp + offset3.o_start + 1,
-                                          offset3.al_len, NULL);
-            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset3))
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
             {
                 creat_string_item(node_now);
                 (*node_now)->cat = str_cat;
                 pstrcat(&((*node_now)->cntnt),
-                        get_text_in_oneline(tmp1 + offset3.o_start,
-                                            offset3.al_len, " "));
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
 
                 node_now = &((*node_now)->next);
-                tmp1 += (offset3.c_end + 1);
-                size1 -= (offset3.c_end + 1);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
             }
 
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
         }
 
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end + 1);
-        offset_reset(&offset1);
-        offset_reset(&offset2);
-        offset_reset(&offset3);
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
     }
 
-    if(get_tag_offset(str, len, "div", "class", "layout detail", &offset1))
+    /*=================================详尽释义=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout detail", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
         node_now = &word->def->dtil;
 
-        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset2))
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
         {
-            tmp1 = tmp + offset2.o_end + 1;
-            size1 = offset2.cn_len;
-            get_tag_offset(tmp, size, "span", NULL, NULL, &offset3);
-            str_cat = get_text_in_oneline(tmp + offset3.o_start + 1,
-                                          offset3.al_len, NULL);
-            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset3))
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
             {
                 creat_string_item(node_now);
                 (*node_now)->cat = str_cat;
                 pstrcat(&((*node_now)->cntnt),
-                        get_text_in_oneline(tmp1 + offset3.o_start,
-                                            offset4.al_len, " "));
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
 
                 node_now = &((*node_now)->next);
-                tmp1 += (offset3.c_end + 1);
-                size1 -= (offset3.c_end + 1);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
             }
 
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
         }
 
-        str += (offset1.c_end + 1);
-        len -= (offset1.c_end + 1);
-        offset_reset(&offset1);
-        offset_reset(&offset2);
-        offset_reset(&offset3);
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 4);
     }
 
-    if(get_tag_offset(str, len, "div", "class", "layout en", &offset1))
+    /*=================================英英释义=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout en", &offset[0]))
     {
-        tmp = str + offset1.o_end + 1;
-        size = offset1.cn_len;
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
         node_now = &word->def->en;
 
-        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset2))
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
         {
-            tmp1 = tmp + offset2.o_end + 1;
-            size1 = offset2.cn_len;
-            get_tag_offset(tmp, size, "span", NULL, NULL, &offset3);
-            str_cat = get_text_in_oneline(tmp + offset3.o_start + 1,
-                                          offset3.al_len, NULL);
-            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset3))
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
             {
-                get_tag_offset(tmp1, size1, "p", NULL, NULL, &offset4);
                 creat_string_item(node_now);
                 (*node_now)->cat = str_cat;
+                get_tag_offset(tmp1, size1, "p", NULL, NULL, &offset[3]);
                 pstrcat(&((*node_now)->cntnt),                                  //获取<li>中的文字
-                        get_text_btwn(tmp1, offset3.o_end, offset4.o_start));
+                        get_text_btwn(tmp1, offset[2].o_end, offset[3].o_start));
                 pstrcat(&((*node_now)->cntnt), get_a_string("\n"));
                 pstrcat(&((*node_now)->cntnt),                                  //获取<p>标签内的文字
-                        get_text_in_oneline(tmp1 + offset4.o_start,
-                                            offset4.al_len, NULL));
+                        get_text_in_oneline(tmp1 + offset[3].o_start,
+                                            offset[3].al_len, NULL));
 
                 node_now = &((*node_now)->next);
-                tmp1 += (offset3.c_end + 1);
-                size1 -= (offset3.c_end + 1);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
             }
 
-            tmp += (offset2.c_end + 1);
-            size -= (offset2.c_end + 1);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
         }
     }
 
     return;
 }
 
+/*==================================组装用例====================================*/
+void go_pack_secsnt(char *str, size_t len, struct word_struct *word)
+{
+    char *tmp, *tmp1, *str_cat;
+    size_t size, size1;
+    struct str_item **node_now;
+    struct tag_offset offset[4];
+
+    offset_reset(offset, 4);
+    word->snt = (struct word_snt *)malloc(sizeof(struct word_snt));
+    memset(word->snt, 0, sizeof(struct word_snt));
+
+    /*==================================例句===================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout sort", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->snt->sort;
+        while(get_tag_offset(tmp, size, "li", NULL, NULL, &offset[1]))
+        {
+            creat_string_item(node_now);
+            pstrcat(&((*node_now)->cntnt),
+                    get_text_in_oneline(tmp + offset[1].o_start,
+                                        offset[1].al_len, NULL));
+
+            node_now = &((*node_now)->next);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 2);
+    }
+
+    /*=================================常见句型=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout patt", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->snt->patt;
+
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "div", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================常用短语=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout phra", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->snt->phra;
+
+        while(get_tag_offset(tmp, size, "dl", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "dt", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================词汇搭配=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout coll", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->snt->coll;
+
+        while(get_tag_offset(tmp, size, "ul", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "b", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================经典引文=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout auth", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->snt->auth;
+
+        while(get_tag_offset(tmp, size, "ul", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, "—————"));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    return;
+}
+
+/*==================================组装用例====================================*/
+void go_pack_seclrn(char *str, size_t len, struct word_struct *word)
+{
+    char *tmp, *tmp1, *str_cat;
+    size_t size, size1;
+    struct str_item **node_now;
+    struct tag_offset offset[3];
+
+    offset_reset(offset, 3);
+    word->lrn = (struct word_lrn *)malloc(sizeof(struct word_lrn));
+    memset(word->lrn, 0, sizeof(struct word_lrn));
+
+    /*================================词语用法=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout ess", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->lrn->ess;
+
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, " "));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================词义辨析=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout discrim", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->lrn->disc;
+
+        while(get_tag_offset(tmp, size, "dl", NULL, NULL, &offset[1]))
+        {
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            creat_string_item(node_now);
+            (*node_now)->cat = str_cat;
+            pstrcat(&((*node_now)->cntnt),
+                    get_text_in_oneline(tmp + offset[1].o_start,
+                                        offset[1].al_len, "\n"));
+
+            node_now = &((*node_now)->next);
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================常见错误=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout comn", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->lrn->comn;
+
+        while(get_tag_offset(tmp, size, "ol", NULL, NULL, &offset[1]))
+        {
+            tmp1 = tmp + offset[1].o_end + 1;
+            size1 = offset[1].cn_len;
+            get_tag_offset(tmp, size, "span", NULL, NULL, &offset[2]);
+            str_cat = get_text_in_oneline(tmp + offset[2].o_start + 1,
+                                          offset[2].al_len, NULL);
+            while(get_tag_offset(tmp1, size1, "li", NULL, NULL, &offset[2]))
+            {
+                creat_string_item(node_now);
+                (*node_now)->cat = str_cat;
+                pstrcat(&((*node_now)->cntnt),
+                        get_text_in_oneline(tmp1 + offset[2].o_start,
+                                            offset[2].al_len, "\n"));
+
+                node_now = &((*node_now)->next);
+                tmp1 += (offset[2].c_end + 1);
+                size1 -= (offset[2].c_end + 1);
+            }
+
+            tmp += (offset[1].c_end + 1);
+            size -= (offset[1].c_end + 1);
+        }
+
+        str += (offset[0].c_end + 1);
+        len -= (offset[0].c_end + 1);
+        offset_reset(offset, 3);
+    }
+
+    /*=================================词源解说=================================*/
+    if(get_tag_offset(str, len, "div", "class", "layout etm", &offset[0]))
+    {
+        tmp = str + offset[0].o_end + 1;
+        size = offset[0].cn_len;
+        node_now = &word->lrn->etm;
+
+        get_tag_offset(tmp, size, "ul", NULL, NULL, &offset[1]);
+        creat_string_item(node_now);
+        tmp1 = get_text_in_oneline(tmp + offset[1].o_start,
+                                   offset[1].al_len, "\n");
+        if(strlen(tmp1))
+            pstrcat(&((*node_now)->cntnt), tmp1);
+    }
+
+    return;
+}
+
+/*==================================组装问答====================================*/
+//void go_pack_secask(char *str, size_t len, struct word_struct *word)
+//{
+//
+//    return;
+//}
+
+/*==================================组装问答====================================*/
+void go_pack_secrel(char *str, size_t len, struct word_struct *word)
+{
+
+
+    return;
+}
+
+/*==================================组装单词====================================*/
 int pack_word_struct(char *str, ssize_t str_len, struct word_struct *word)
 {
-    struct tag_offset offset1;
-    if(get_tag_offset(str, str_len, "div", "class", "main", &offset1))
+    struct tag_offset offset;
+    offset_reset(&offset, 1);
+
+    if(get_tag_offset(str, str_len, "div", "class", "main", &offset))
     {
-        str += (offset1.o_end + 1);
-        str_len = offset1.cn_len;
+        str += (offset.o_end + 1);
+        str_len = offset.cn_len;
+        offset_reset(&offset, 1);
     }
 
-    if(get_tag_offset(str, str_len, "div", "class", "word", &offset1))
+    if(get_tag_offset(str, str_len, "div", "class", "word", &offset))
     {
-        go_pack_keyword(str + offset1.o_end + 1, offset1.cn_len, word);
-        str += (offset1.c_end + 1);
-        str_len -= (offset1.c_end + 1);
+        go_pack_keyword(str + offset.o_end + 1, offset.cn_len, word);
+        str += (offset.c_end + 1);
+        str_len -= (offset.c_end + 1);
+        offset_reset(&offset, 1);
     }
 
-    if(get_tag_offset(str, str_len, "div", "class", "section def", &offset1))
+    if(get_tag_offset(str, str_len, "div", "class", "section def", &offset))
     {
-        go_pack_secdef(str + offset1.o_end + 1, offset1.cn_len, word);
-        str += (offset1.c_end + 1);
-        str_len -= (offset1.c_end + 1);
+        go_pack_secdef(str + offset.o_end + 1, offset.cn_len, word);
+        str += (offset.c_end + 1);
+        str_len -= (offset.c_end + 1);
+        offset_reset(&offset, 1);
     }
 
-//    if(get_tag_offset(str, size, "div", "class", "section sent", &offset1))
+    if(get_tag_offset(str, str_len, "div", "class", "section sent", &offset))
+    {
+        go_pack_secsnt(str + offset.o_end + 1, offset.cn_len, word);
+        str += (offset.c_end + 1);
+        str_len -= (offset.c_end + 1);
+        offset_reset(&offset, 1);
+    }
+
+    if(get_tag_offset(str, str_len, "div", "class", "section learn", &offset))
+    {
+        go_pack_seclrn(str + offset.o_end + 1, offset.cn_len, word);
+        str += (offset.c_end + 1);
+        str_len -= (offset.c_end + 1);
+        offset_reset(&offset, 1);
+    }
+
+//    if(get_tag_offset(str, size, "div", "class", "section ask", &offset))
 //    {
-//        go_pack_secsent(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
+//        go_pack_secask(str + offset.o_end + 1, offset.cn_len, word);
+//        str += (offset.c_end + 1);
+//        str_len -= (offset.c_end + 1);
+//        offset_reset(&offset, 1);
 //    }
-//    if(get_tag_offset(str, size, "div", "class", "section learn", &offset1))
+
+//    if(get_tag_offset(str, size, "div", "class", "section nwd", &offset))
 //    {
-//        go_pack_seclrn(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
+//        go_pack_secrel(str + offset.o_end + 1, offset.cn_len, word);
+//        str += (offset.c_end + 1);
+//        str_len -= (offset.c_end + 1);
 //    }
-//    if(get_tag_offset(str, size, "div", "class", "section ask", &offset1))
-//    {
-//        go_pack_secask(str, word);
-//        str += (offset1.c_end + 1);
-//        size -= (offset1.c_end + 1);
-//    }
+
     return 1;
 }
